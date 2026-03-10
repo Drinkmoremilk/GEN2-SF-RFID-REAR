@@ -1,0 +1,15 @@
+echo "auto build and run script";
+echo "Original by Eliot Chen, Modified by Yuchen Jiang";
+
+sudo rm -rf build;
+mkdir build;
+cd build;
+cmake ../;
+sudo make install;
+sudo ldconfig;
+
+cd ..;
+cd apps;
+sudo GR_SCHEDULER=STS nice -n -20 python2 ./reader.py;
+
+

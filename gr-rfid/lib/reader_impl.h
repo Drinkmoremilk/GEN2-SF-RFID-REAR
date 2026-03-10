@@ -17,7 +17,7 @@
  * the Free Software Foundation, Inc., 51 Franklin Street,
  * Boston, MA 02110-1301, USA.
  */
-
+/* Modified by Yuchen Jiang, SUSTech */
 #ifndef INCLUDED_RFID_READER_IMPL_H
 #define INCLUDED_RFID_READER_IMPL_H
 
@@ -32,8 +32,9 @@ namespace gr {
     {
      private:
       int s_rate, d_rate,  n_cwquery_s,  n_cwack_s,n_p_down_s;
-      float sample_d, n_data0_s, n_data1_s, n_cw_s, n_pw_s, n_delim_s, n_trcal_s;
-      std::vector<float> data_0, data_1, cw, cw_ack, cw_query, delim, frame_sync, preamble, rtcal, trcal, query_bits, ack_bits, query_rep,nak, query_adjust_bits,p_down;
+      float sample_d, n_data0_s, n_data1_s, n_cw_s, n_pw_s, n_delim_s, n_trcal_s,yc_cw_max=0.0;
+      std::vector<float> query_bits, ack_bits,query_adjust_bits, query_rep_bits, nak_bits;
+      std::vector<gr_complex>data_0, data_1, cw, cw_ack, cw_query, delim, frame_sync, preamble, rtcal, trcal,query_rep,nak, p_down;
       int q_change; // 0-> increment, 1-> unchanged, 2-> decrement
       void gen_query_adjust_bits();
       void crc_append(std::vector<float> & q);
@@ -42,6 +43,7 @@ namespace gr {
 
     public:
       void print_results();
+      // void data_write();
       reader_impl(int sample_rate, int dac_rate);
       ~reader_impl();
 

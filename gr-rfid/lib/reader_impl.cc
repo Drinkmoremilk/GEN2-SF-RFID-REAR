@@ -18,10 +18,14 @@
  * Boston, MA 02110-1301, USA.
  */
 
+/* Modified by Yuchen Jiang, SUSTech */
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-
+#include <fstream>
+#include <iostream>
+#include <cmath>
 #include <gnuradio/io_signature.h>
 #include "reader_impl.h"
 #include "rfid/global_vars.h"
@@ -43,7 +47,7 @@ namespace gr {
     reader_impl::reader_impl(int sample_rate, int dac_rate)
       : gr::block("reader",
               gr::io_signature::make( 1, 1, sizeof(float)),
-              gr::io_signature::make( 1, 1, sizeof(float)))
+              gr::io_signature::make( 1, 1, sizeof(gr_complex)))
     {
 
       GR_LOG_INFO(d_logger, "Block initialized");
@@ -74,8 +78,18 @@ namespace gr {
       cw_query.resize(n_cwquery_s);      // Sent after query/query rep
       cw_ack.resize(n_cwack_s);          // Sent after ack
 
-      std::fill_n(cw_query.begin(), cw_query.size(), 1);
-      std::fill_n(cw_ack.begin(), cw_ack.size(), 1);
+      std::fill_n(cw_query.begin(), cw_query.size(), gr_complex(1,1));
+      std::fill_n(cw_ack.begin(), cw_ack.size(), gr_complex(1,1));
+
+      for (int j = 0; j < 200; j++)
+      {
+        if (std::abs(yc_cw[j])>yc_cw_max)
+        {
+          yc_cw_max = std::abs(yc_cw[j]);
+        }        
+      }
+    
+     
 
       GR_LOG_INFO(d_logger, "Carrier wave after a query transmission in samples : "     << n_cwquery_s);
       GR_LOG_INFO(d_logger, "Carrier wave after ACK transmission in samples : "        << n_cwack_s);
@@ -89,11 +103,11 @@ namespace gr {
       trcal.resize(n_trcal_s);
 
       // Fill vectors with data
-      std::fill_n(data_0.begin(), data_0.size()/2, 1);
-      std::fill_n(data_1.begin(), 3*data_1.size()/4, 1);
-      std::fill_n(cw.begin(), cw.size(), 1);
-      std::fill_n(rtcal.begin(), rtcal.size() - n_pw_s, 1); // RTcal
-      std::fill_n(trcal.begin(), trcal.size() - n_pw_s, 1); // TRcal
+      std::fill_n(data_0.begin(), data_0.size()/2, gr_complex(1,1));
+      std::fill_n(data_1.begin(), 3*data_1.size()/4, gr_complex(1,1));
+      std::fill_n(cw.begin(), cw.size(), gr_complex(1,1));
+      std::fill_n(rtcal.begin(), rtcal.size() - n_pw_s, gr_complex(1,1)); // RTcal
+      std::fill_n(trcal.begin(), trcal.size() - n_pw_s, gr_complex(1,1)); // TRcal
 
       // create preamble
       preamble.insert( preamble.end(), delim.begin(), delim.end() );
@@ -179,6 +193,7 @@ namespace gr {
 
       std::cout << "| Correctly decoded EPC : "  <<  reader_state->reader_stats.n_epc_correct     << std::endl;
       std::cout << "| Number of unique tags : "  <<  reader_state->reader_stats.tag_reads.size() << std::endl;
+         
 
       std::map<int,int>::iterator it;
 
@@ -187,9 +202,32 @@ namespace gr {
         std::cout << std::hex <<  "| Tag ID : " << it->first << "  ";
         std::cout << "Num of reads : " << std::dec << it->second << std::endl;
       }
-
+      std::cout<<"| reader_state->reader_stats.h_h = "<< reader_state->reader_stats.h_h<<" & "<<"reader_state->reader_stats.h_l"<<reader_state->reader_stats.h_l<<std::endl;     
+      std::cout<<"| scale = "<< reader_state->reader_stats.scale<<std::endl;
       std::cout << " --------------------------" << std::endl;
     }
+      /*----------write data to file--------------*/
+      /* use this function, uncomment the codes below and also check reader.py reader_impl.h ../include/rfid/reader.h */
+      // void reader_impl::data_write()
+      // {
+      //     int correctEPC = reader_state->reader_stats.n_epc_correct;
+      //     float scaleValue = 7 * std::abs(reader_state->reader_stats.h_h - reader_state->reader_stats.h_l);
+      
+      //     std::cout << "begin store data" << std::endl;
+      //     std::ofstream ofs("../misc/data/DATA.txt");
+      //     if (ofs.is_open())
+      //     {
+      //         ofs << correctEPC << std::endl;
+      //         ofs << scaleValue << std::endl;
+      //         ofs.close();
+      //         std::cout << "finish store data" << std::endl;
+      //     }
+      //     else
+      //     {
+      //         std::cerr << "Error opening file for writing" << std::endl;
+      //     }
+      // }
+      
 
     void
     reader_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
@@ -205,12 +243,13 @@ namespace gr {
     {
 
       const float *in = (const float *) input_items[0];
-      float *out =  (float*) output_items[0];
-      std::vector<float> out_message; 
+      gr_complex *out =  (gr_complex*) output_items[0];
+      std::vector<gr_complex> out_message; 
       int n_output;
-      int consumed = 0;
+      int consumed = 0;q_change;
       int written = 0;
-
+      int start_index = 4*PW_D/sample_d;
+      int end_index = n_cwack_s-4*PW_D/sample_d;
       consumed = ninput_items[0];
   
       switch (reader_state->gen2_logic_status)
@@ -218,42 +257,41 @@ namespace gr {
         case START:
           GR_LOG_INFO(d_debug_logger, "START");
 
-          memcpy(&out[written], &cw_ack[0], sizeof(float) * cw_ack.size() );
+          memcpy(&out[written], &cw_ack[0], sizeof(gr_complex) * cw_ack.size() );
           written += cw_ack.size();
+          /*Due to the channel's stability, only one estimation is needed per acquisition,*/ 
+          /*and subsequent transmissions maintain uniform energy for sensing and related operations.*/
+          reader_state->reader_stats.h_flag = 1; 
           reader_state->gen2_logic_status = SEND_QUERY;    
           break;
 
         case POWER_DOWN:
           GR_LOG_INFO(d_debug_logger, "POWER DOWN");
-          memcpy(&out[written], &p_down[0], sizeof(float) * p_down.size() );
+          memcpy(&out[written], &p_down[0], sizeof(gr_complex) * p_down.size() );
           written += p_down.size();
           reader_state->gen2_logic_status = START;    
           break;
 
         case SEND_NAK_QR:
           GR_LOG_INFO(d_debug_logger, "SEND NAK");
-          memcpy(&out[written], &nak[0], sizeof(float) * nak.size() );
+          memcpy(&out[written], &nak[0], sizeof(gr_complex) * nak.size() );
           written += nak.size();
-          memcpy(&out[written], &cw[0], sizeof(float) * cw.size() );
+          memcpy(&out[written], &cw[0], sizeof(gr_complex) * cw.size() );
           written+=cw.size();
           reader_state->gen2_logic_status = SEND_QUERY_REP;    
           break;
 
         case SEND_NAK_Q:
           GR_LOG_INFO(d_debug_logger, "SEND NAK");
-          memcpy(&out[written], &nak[0], sizeof(float) * nak.size() );
+          memcpy(&out[written], &nak[0], sizeof(gr_complex) * nak.size() );
           written += nak.size();
-          memcpy(&out[written], &cw[0], sizeof(float) * cw.size() );
+          memcpy(&out[written], &cw[0], sizeof(gr_complex) * cw.size() );
           written+=cw.size();
           reader_state->gen2_logic_status = SEND_QUERY;    
           break;
 
         case SEND_QUERY:
 
-          /*if (reader_state->reader_stats.n_queries_sent % 500 == 0)
-          {
-            std::cout << "Running " << std::endl;
-          }*/
 
           GR_LOG_INFO(d_debug_logger, "QUERY");
           GR_LOG_INFO(d_debug_logger, "INVENTORY ROUND : " << reader_state->reader_stats.cur_inventory_round << " SLOT NUMBER : " << reader_state->reader_stats.cur_slot_number);
@@ -263,28 +301,30 @@ namespace gr {
           reader_state->decoder_status = DECODER_DECODE_RN16;
           reader_state->gate_status    = GATE_SEEK_RN16;
 
-          memcpy(&out[written], &preamble[0], sizeof(float) * preamble.size() );
+          memcpy(&out[written], &preamble[0], sizeof(gr_complex) * preamble.size() );
           written+=preamble.size();
    
           for(int i = 0; i < query_bits.size(); i++)
           {
             if(query_bits[i] == 1)
             {
-              memcpy(&out[written], &data_1[0], sizeof(float) * data_1.size() );
+              memcpy(&out[written], &data_1[0], sizeof(gr_complex) * data_1.size() );
               written+=data_1.size();
             }
             else
             {
-              memcpy(&out[written], &data_0[0], sizeof(float) * data_0.size() );
+              memcpy(&out[written], &data_0[0], sizeof(gr_complex) * data_0.size() );
               written+=data_0.size();
             }
           }
           // Send CW for RN16
-          memcpy(&out[written], &cw_query[0], sizeof(float) * cw_query.size() );
+          memcpy(&out[written], &cw_query[0], sizeof(gr_complex) * cw_query.size() );
           written+=cw_query.size();
 
           // Return to IDLE
-          reader_state->gen2_logic_status = IDLE;      
+          reader_state->gen2_logic_status = IDLE; 
+          
+
           break;
 
         case SEND_ACK:
@@ -298,19 +338,19 @@ namespace gr {
             gen_ack_bits(in);
           
             // Send FrameSync
-            memcpy(&out[written], &frame_sync[0], sizeof(float) * frame_sync.size() );
+            memcpy(&out[written], &frame_sync[0], sizeof(gr_complex) * frame_sync.size() );
             written += frame_sync.size();
 
             for(int i = 0; i < ack_bits.size(); i++)
             {
               if(ack_bits[i] == 1)
               {
-                memcpy(&out[written], &data_1[0], sizeof(float) * data_1.size() );
+                memcpy(&out[written], &data_1[0], sizeof(gr_complex) * data_1.size() );
                 written += data_1.size();
               }
               else  
               {
-                memcpy(&out[written], &data_0[0], sizeof(float) * data_0.size() );
+                memcpy(&out[written], &data_0[0], sizeof(gr_complex) * data_0.size() );
                 written += data_0.size();
               }
             }
@@ -319,12 +359,26 @@ namespace gr {
           }
           break;
 
-        case SEND_CW:
+
+          /* customize baseband, use SEN_CW and SEN_CW_2 to avoid segment fault (ADC = DAC = 2MHz)*/
+          case SEND_CW:
           GR_LOG_INFO(d_debug_logger, "SEND CW");
-          memcpy(&out[written], &cw_ack[0], sizeof(float) * cw_ack.size() );
-          written += cw_ack.size();
-          reader_state->gen2_logic_status = IDLE;      // Return to IDLE
+          for (int i = 0; i < cw_ack.size()/2; i++)
+          {
+            out[written+i] = cw_ack[i] + yc_cw[i%200]/yc_cw_max * reader_state->reader_stats.scale; // scale determines the amplitude ratio (baseband signal to tag FM0)
+          }
+          written+=cw_ack.size()/2;
+          reader_state->gen2_logic_status = SEND_CW_2;      
           break;
+          case SEND_CW_2:
+            GR_LOG_INFO(d_debug_logger, "SEND CW");
+            for (int i = 0; i < cw_ack.size()/2; i++)
+            {
+              out[written+i] = cw_ack[cw_ack.size()/2+i] + yc_cw[(cw_ack.size()/2+i)%200]/yc_cw_max * reader_state->reader_stats.scale;
+            }
+            written += cw_ack.size()/2;
+            reader_state->gen2_logic_status = IDLE;      // Return to IDLE
+            break;
 
         case SEND_QUERY_REP:
           GR_LOG_INFO(d_debug_logger, "SEND QUERY_REP");
@@ -334,10 +388,10 @@ namespace gr {
           reader_state->gate_status    = GATE_SEEK_RN16;
           reader_state->reader_stats.n_queries_sent +=1;  
 
-          memcpy(&out[written], &query_rep[0], sizeof(float) * query_rep.size() );
+          memcpy(&out[written], &query_rep[0], sizeof(gr_complex) * query_rep.size() );
           written += query_rep.size();
 
-          memcpy(&out[written], &cw_query[0], sizeof(float) * cw_query.size());
+          memcpy(&out[written], &cw_query[0], sizeof(gr_complex) * cw_query.size());
           written+=cw_query.size();
 
           reader_state->gen2_logic_status = IDLE;    // Return to IDLE
@@ -350,23 +404,23 @@ namespace gr {
           reader_state->gate_status    = GATE_SEEK_RN16;
           reader_state->reader_stats.n_queries_sent +=1;  
 
-          memcpy(&out[written], &frame_sync[0], sizeof(float) * frame_sync.size() );
+          memcpy(&out[written], &frame_sync[0], sizeof(gr_complex) * frame_sync.size() );
           written += frame_sync.size();
 
           for(int i = 0; i < query_adjust_bits.size(); i++)
           {
             if(query_adjust_bits[i] == 1)
             {
-              memcpy(&out[written], &data_1[0], sizeof(float) * data_1.size() );
+              memcpy(&out[written], &data_1[0], sizeof(gr_complex) * data_1.size() );
               written+=data_1.size();
             }
             else
             {
-              memcpy(&out[written], &data_0[0], sizeof(float) * data_0.size() );
+              memcpy(&out[written], &data_0[0], sizeof(gr_complex) * data_0.size() );
               written+=data_0.size();
             }
           }
-          memcpy(&out[written], &cw_query[0], sizeof(float) * cw_query.size());
+          memcpy(&out[written], &cw_query[0], sizeof(gr_complex) * cw_query.size());
           written+=cw_query.size();
           reader_state->gen2_logic_status = IDLE;    // Return to IDLE
           break;

@@ -17,7 +17,7 @@
  * the Free Software Foundation, Inc., 51 Franklin Street,
  * Boston, MA 02110-1301, USA.
  */
-
+/* Modified by Yuchen Jiang, SUSTech */
 #ifndef INCLUDED_RFID_TAG_DECODER_IMPL_H
 #define INCLUDED_RFID_TAG_DECODER_IMPL_H
 
@@ -38,16 +38,19 @@ namespace rfid {
       int s_rate;
       std::vector<float> pulse_bit;
       float T_global;
-      gr_complex h_est;
+      gr_complex h_est_h;
+      gr_complex h_est_l;
       char * char_bits;
 
       std::vector<float> tag_detection_EPC(std::vector<gr_complex> &EPC_samples_complex, int index);
       std::vector<float> tag_detection_RN16(std::vector<gr_complex> &RN16_samples_complex);      
-      int tag_sync(const gr_complex * in, int size);
-       int check_crc(char * bits, int num_bits);
+      int tag_sync(const gr_complex * in , const gr_complex * in_RN16_EPC, int size);
+      int check_crc(char * bits, int num_bits);
 
     public:
-      tag_decoder_impl(int sample_rate, std::vector<int> output_sizes);
+      // gr_complex  h_est_rn16_h;
+      // gr_complex  h_est_rn16_l;
+      tag_decoder_impl(int sample_rate,std::vector<int> input_sizes, std::vector<int> output_sizes);
       ~tag_decoder_impl();
 
       void forecast (int noutput_items, gr_vector_int &ninput_items_required);

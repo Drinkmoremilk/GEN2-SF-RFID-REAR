@@ -1,0 +1,7 @@
+echo "run reader.py";
+echo "by Yuchen Jiang";
+
+cd apps;
+sudo GR_SCHEDULER=STS nice -n -20 python2 ./reader.py;
+
+

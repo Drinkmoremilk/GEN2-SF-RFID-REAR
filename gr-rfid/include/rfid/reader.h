@@ -39,7 +39,8 @@ namespace gr {
     {
      public:
       typedef boost::shared_ptr<reader> sptr;
-      virtual void print_results() =0;
+      virtual void print_results() = 0;
+      // virtual void data_write() = 0;
       /*!
        * \brief Return a shared_ptr to a new instance of rfid::reader.
        *

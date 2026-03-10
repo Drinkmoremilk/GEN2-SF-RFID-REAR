@@ -17,7 +17,7 @@
  * the Free Software Foundation, Inc., 51 Franklin Street,
  * Boston, MA 02110-1301, USA.
  */
-
+/* Modified by Yuchen Jiang, SUSTech */
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -32,16 +32,23 @@ namespace gr {
     gate::sptr
     gate::make(int sample_rate)
     {
+      std::vector<int> input_sizes;
+      input_sizes.push_back(sizeof(gr_complex));
+      input_sizes.push_back(sizeof(gr_complex));
+
+       std::vector<int> output_sizes;
+      output_sizes.push_back(sizeof(gr_complex));
+      output_sizes.push_back(sizeof(gr_complex));
       return gnuradio::get_initial_sptr
-        (new gate_impl(sample_rate));
+        (new gate_impl(sample_rate, input_sizes, output_sizes));
     }
     /*
      * The private constructor
      */
-    gate_impl::gate_impl(int sample_rate)
+    gate_impl::gate_impl(int sample_rate,std::vector<int> input_sizes,std::vector<int> output_sizes)
       : gr::block("gate",
-              gr::io_signature::make(1, 1, sizeof(gr_complex)),
-              gr::io_signature::make(1, 1, sizeof(gr_complex))),
+              gr::io_signature::makev(2, 2, input_sizes),
+              gr::io_signature::makev(2, 2, output_sizes)),
               n_samples(0), win_index(0), dc_index(0), num_pulses(0), signal_state(NEG_EDGE), avg_ampl(0), dc_est(0,0)
     {
 
@@ -90,8 +97,9 @@ namespace gr {
     {
 
       const gr_complex *in = (const gr_complex *) input_items[0];
+      const gr_complex *in_raw_sourece = (const gr_complex *) input_items[1];
       gr_complex *out = (gr_complex *) output_items[0];
-
+      gr_complex *out_raw_source = (gr_complex *) output_items[1];
       int n_items = ninput_items[0];
       int number_samples_consumed = n_items;
       float sample_ampl = 0;
@@ -112,13 +120,13 @@ namespace gr {
       if(reader_state->gate_status == GATE_SEEK_EPC)
       {
         reader_state->gate_status = GATE_CLOSED;
-        reader_state->n_samples_to_ungate = (EPC_BITS + TAG_PREAMBLE_BITS) * n_samples_TAG_BIT + 2*n_samples_TAG_BIT;
+        reader_state->n_samples_to_ungate = (EPC_BITS + TAG_PREAMBLE_BITS) * n_samples_TAG_BIT + 7*n_samples_TAG_BIT;
         n_samples = 0;
       }
       else if (reader_state->gate_status == GATE_SEEK_RN16)
       {
         reader_state->gate_status = GATE_CLOSED;
-        reader_state->n_samples_to_ungate = (RN16_BITS + TAG_PREAMBLE_BITS) * n_samples_TAG_BIT + 2*n_samples_TAG_BIT;
+        reader_state->n_samples_to_ungate = (RN16_BITS + TAG_PREAMBLE_BITS) * n_samples_TAG_BIT + 7*n_samples_TAG_BIT;
         n_samples = 0;
       }
       
@@ -161,30 +169,26 @@ namespace gr {
               n_samples = 0;
             }
 
-            if(n_samples > n_samples_T1 && signal_state == POS_EDGE && num_pulses > NUM_PULSES_COMMAND)
+            if(n_samples > n_samples_T1 - 5* n_samples_TAG_BIT  && signal_state == POS_EDGE && num_pulses > NUM_PULSES_COMMAND) //  transfer 2-bits more samples before T1 end 
             {
               GR_LOG_INFO(d_debug_logger, "READER COMMAND DETECTED");
 
               reader_state->gate_status = GATE_OPEN;
-
               reader_state->magn_squared_samples.resize(0);
-
-
               reader_state->magn_squared_samples.push_back(std::norm(in[i] - dc_est));
-              out[written] = in[i] - dc_est;  
+              out[written] = in[i] - dc_est;
+              out_raw_source[written]= in_raw_sourece[i];  
               written++;
-
               num_pulses = 0; 
               n_samples =  1; // Count number of samples passed to the next block
-
-            }
-          }
+            }         
+         }
           else
           {
             n_samples++;
-
             reader_state->magn_squared_samples.push_back(std::norm(in[i] - dc_est));
-            out[written] = in[i] - dc_est; // Remove offset from complex samples           
+            out[written] = in[i] - dc_est; // Remove offset from complex samples
+            out_raw_source[written]= in_raw_sourece[i];             
             written++;
             if (n_samples >= reader_state->n_samples_to_ungate)
             {

@@ -44,7 +44,7 @@ namespace gr {
         SIGNAL_STATE signal_state;
 
        public:
-        gate_impl(int sample_rate);
+         gate_impl(int sample_rate, std::vector<int> input_sizes,std::vector<int> output_sizes);
         ~gate_impl();
 
         void forecast (int noutput_items, gr_vector_int &ninput_items_required);
