@@ -95,20 +95,15 @@ https://github.com/nkargas/Gen2-UHF-RFID-Reader/issues/10
     
 ## Hardware:
 
-  - 1x USRPN200/N210  
-  - 1x RFX900/SBX daughterboard  
-  - 2x circular polarized antennas  
-
-<img src="./example_setup.png" width="300">
-
+  - 1x USRPX310  
+  - 1x SBX40 daughterboard  
+  - 1x circular polarized antennas  
+  - 1x circulator
 ## Tested on:
-  Ubuntu 14.04 64-bit  
-  GNU Radio 3.7.4
-  
-## If you use this software please cite:
-N. Kargas, F. Mavromatis and A. Bletsas, "Fully-Coherent Reader with Commodity SDR for Gen2 FM0 and Computational RFID", IEEE Wireless Communications Letters (WCL), Vol. 4, No. 6, pp. 617-620, Dec. 2015. 
+  Ubuntu 22.04 64-bit  
+  GNU Radio 3.10.1.1
 
 ## Contact:
-  Nikos Kargas (email: karga005@umn.edu)  
+  Yuchen Jiang (email: jycddm@gmail.com)  
 
 This research has been co-financed by the European Union (European Social Fund-ESF) and Greek national funds through the Operational Program Education and Lifelong Learning of the National Strategic Reference Framework (NSRF) - Research Funding Program: THALES-Investing in knowledge society through the European Social Fund.
