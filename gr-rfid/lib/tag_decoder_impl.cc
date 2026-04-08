@@ -58,7 +58,7 @@ namespace gr {
       char_bits = (char *) malloc( sizeof(char) * 128);
 
       n_samples_TAG_BIT = TAG_BIT_D * s_rate / pow(10,6);      
-      d_logger->info( "Number of samples of Tag bit : {}", n_samples_TAG_BIT);
+      //d_logger->info( "Number of samples of Tag bit : {}", n_samples_TAG_BIT);
     }
 
     /*
@@ -255,7 +255,7 @@ namespace gr {
         // RN16 bits are passed to the next block for the creation of ACK message
         if (number_of_half_bits == 2*(RN16_BITS-1))
         {  
-          d_logger->info( "RN16 DECODED");
+          //d_logger->info( "RN16 DECODED");
           RN16_bits  = tag_detection_RN16(RN16_samples_complex);
 
           for(int bit=0; bit<RN16_bits.size(); bit++)
@@ -350,11 +350,11 @@ namespace gr {
             {
               result += std::pow(2,7-i) * EPC_bits[104+i] ;
             }
-            d_logger->info( "EPC CORRECTLY DECODED, TAG ID : {}", result);
+            //d_logger->info( "EPC CORRECTLY DECODED, TAG ID : {}", result);
             
             float rssi = std::abs(h_est);
             float phase = std::arg(h_est);
-            d_logger->info("TAG MEASUREMENT | ID: {} | RSSI: {} | Phase: {}", result, rssi, phase);
+            //d_logger->info("TAG MEASUREMENT | ID: {} | RSSI: {} | Phase: {}", result, rssi, phase);
 
             // Save part of Tag's EPC message (EPC[104:111] in decimal) + number of reads
             std::map<int,int>::iterator it = reader_state->reader_stats.tag_reads.find(result);
@@ -387,12 +387,12 @@ namespace gr {
             }
 
             
-            d_logger->info( "EPC FAIL TO DECODE");  
+            //d_logger->info( "EPC FAIL TO DECODE");  
           }
         }
         else
         {
-          d_logger->emerg( "CHECK ME");  
+          //d_logger->emerg( "CHECK ME");  
         }
         consumed = reader_state->n_samples_to_ungate;
       }

@@ -15,7 +15,7 @@ echo "PYTHONPATH set to include: $SCRIPT_DIR/gr-rfid/build/python"
 
 # Run the reader script
 # -E preserves the environment variables (like PYTHONPATH) when switching to sudo
-# GR_SCHEDULER=STS and nice -n -20 are for real-time priority
+# GR_SCHEDULER=TPB and nice -n -20 are for real-time priority
 echo "Starting Reader..."
 cd $SCRIPT_DIR/gr-rfid/apps
-sudo LD_LIBRARY_PATH=$LD_LIBRARY_PATH PYTHONPATH=$PYTHONPATH GR_SCHEDULER=STS nice -n -20 python3 -u reader.py
+sudo LD_LIBRARY_PATH=$LD_LIBRARY_PATH PYTHONPATH=$PYTHONPATH GR_SCHEDULER=TPB nice -n -20 python3 -u reader.py

@@ -10,7 +10,7 @@ plt.close('all')
 
 # 获取脚本所在目录，构建数据文件路径
 script_dir = os.path.dirname(os.path.abspath(__file__))
-file_path = os.path.join(script_dir, '../data/file_source_test')
+file_path = os.path.join(script_dir, '../data/source')
 file_path = os.path.normpath(file_path)
 
 # 读取二进制文件

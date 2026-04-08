@@ -1,4 +1,5 @@
-#Developed by: Nikos Kargas 
+# Upgraded by: Yuchen Jiang
+# Originated by: Nikos Kargas 
 
 from gnuradio import gr
 from gnuradio import uhd
@@ -7,7 +8,7 @@ from gnuradio import filter
 from gnuradio import analog
 from gnuradio import digital
 from gnuradio import qtgui
-import rfid
+from gnuradio import rfid
 
 DEBUG = False
 
@@ -26,7 +27,7 @@ class reader_top_block(gr.top_block):
     self.source.set_center_freq(self.freq, 0)
     self.source.set_gain(self.rx_gain, 0)
     self.source.set_antenna("RX2", 0)
-    #self.source.set_auto_dc_offset(False) # Uncomment this line for SBX daughterboard
+    self.source.set_auto_dc_offset(False) # Uncomment this line for SBX daughterboard
 
   # Configure usrp sink
   def setup_usrp_sink(self):
@@ -47,25 +48,25 @@ class reader_top_block(gr.top_block):
     gr.top_block.__init__(self, "RFID Reader")
 
     ######## Variables #########
-    self.dac_rate = 1e6                 # DAC rate 
-    self.adc_rate = 100e6/50            # ADC rate (2MS/s complex samples)
-    self.decim     = 5                    # Decimation (downsampling factor)
-    self.ampl     = 0.1                  # Output signal amplitude
-    self.freq     = 910e6                # Modulation frequency
-    self.rx_gain   = 20                   # RX Gain
-    self.tx_gain   = 0                    # RFX900 no Tx gain option
+    self.dac_rate = 20e6                 # DAC rate 
+    self.adc_rate = 20e6            # ADC rate (2MS/s complex samples)
+    self.decim    = 50                    # Decimation (downsampling factor)
+    self.ampl     = 0.8                  # Output signal amplitude
+    self.freq     = 915e6                # Modulation frequency
+    self.rx_gain  = 0                 # RX Gain
+    self.tx_gain  = 31.5                    # RFX900 no Tx gain option
 
     self.usrp_address_source = "addr=192.168.40.2"
     self.usrp_address_sink   = "addr=192.168.40.2"
 
-    self.num_taps     = [1] * 25 # matched to half symbol period
+    self.num_taps     = [1] * 250 # matched to half symbol period
 
     ######## File sinks for debugging #########
     self.file_sink_source         = blocks.file_sink(gr.sizeof_gr_complex*1, "../misc/data/source", False)
     self.file_sink_matched_filter = blocks.file_sink(gr.sizeof_gr_complex*1, "../misc/data/matched_filter", False)
     self.file_sink_gate           = blocks.file_sink(gr.sizeof_gr_complex*1, "../misc/data/gate", False)
     self.file_sink_decoder        = blocks.file_sink(gr.sizeof_gr_complex*1, "../misc/data/decoder", False)
-    self.file_sink_reader         = blocks.file_sink(gr.sizeof_float*1,      "../misc/data/reader", False)
+    self.file_sink_reader         = blocks.file_sink(gr.sizeof_gr_complex*1,      "../misc/data/reader", False)
 
     ######## Blocks #########
     print("Creating matched_filter...")
@@ -77,9 +78,9 @@ class reader_top_block(gr.top_block):
     print("Creating reader...")
     self.reader          = rfid.reader(int(self.adc_rate/self.decim),int(self.dac_rate))
     print("Creating amp...")
-    self.amp              = blocks.multiply_const_ff(self.ampl)
-    print("Creating to_complex...")
-    self.to_complex      = blocks.float_to_complex()
+    self.amp              = blocks.multiply_const_cc(self.ampl)
+    # print("Creating to_complex...")
+    # self.to_complex      = blocks.float_to_complex()
     print("Blocks created.")
 
     if (DEBUG == False) : # Real Time Execution
@@ -93,8 +94,7 @@ class reader_top_block(gr.top_block):
       self.connect(self.gate, self.tag_decoder)
       self.connect((self.tag_decoder,0), self.reader)
       self.connect(self.reader, self.amp)
-      self.connect(self.amp, self.to_complex)
-      self.connect(self.to_complex, self.sink)
+      self.connect(self.amp, self.sink)
     else :  # Offline Data
       self.file_source               = blocks.file_source(gr.sizeof_gr_complex*1, "../misc/data/file_source_test",False)
       self.file_sink                  = blocks.file_sink(gr.sizeof_gr_complex*1,   "../misc/data/file_sink", False)
@@ -105,10 +105,13 @@ class reader_top_block(gr.top_block):
       self.connect(self.gate, self.tag_decoder)
       self.connect((self.tag_decoder,0), self.reader)
       self.connect(self.reader, self.amp)
-      self.connect(self.amp, self.to_complex)
-      self.connect(self.to_complex, self.file_sink)
+      self.connect(self.amp,self.file_sink)
     
     self.connect((self.tag_decoder,1), self.file_sink_decoder)
+    self.connect(self.source, self.file_sink_source)                  # raw received echo
+    self.connect(self.matched_filter, self.file_sink_matched_filter)
+    self.connect((self.gate, 0), self.file_sink_gate)
+    self.connect((self.reader, 0), self.file_sink_reader)
 
 if __name__ == '__main__':
   main_block = reader_top_block()

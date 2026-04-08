@@ -55,17 +55,17 @@ namespace gr {
       win_samples.resize(win_length);
       dc_samples.resize(dc_length);
 
-      d_logger->info("T1 samples : {}", n_samples_T1);
-      d_logger->info( "PW samples : {}", n_samples_PW);
+      //d_logger->info("T1 samples : {}", n_samples_T1);
+      //d_logger->info( "PW samples : {}", n_samples_PW);
 
-      d_logger->info( "Samples of Tag bit : {}", n_samples_TAG_BIT);
-      d_logger->info( "Size of window : {}", win_length);
-      d_logger->info( "Size of window for dc offset estimation : {}", dc_length);
-      d_logger->info( "Duration of window for dc offset estimation : {} us", DC_SIZE_D);
+      //d_logger->info( "Samples of Tag bit : {}", n_samples_TAG_BIT);
+      //d_logger->info( "Size of window : {}", win_length);
+      //d_logger->info( "Size of window for dc offset estimation : {}", dc_length);
+      //d_logger->info( "Duration of window for dc offset estimation : {} us", DC_SIZE_D);
 
       
       // First block to be scheduled
-      d_logger->info( "Initializing reader state...");
+      //d_logger->info( "Initializing reader state...");
       initialize_reader_state();
     } 
 
@@ -105,7 +105,7 @@ namespace gr {
         reader_state-> status = TERMINATED;
         gettimeofday (&reader_state-> reader_stats.end, NULL);
         std::cout << "| Execution time : " << reader_state-> reader_stats.end.tv_sec - reader_state-> reader_stats.start.tv_sec << " seconds" << std::endl;
-        d_logger->info( "Termination");
+        //d_logger->info( "Termination");
        }
 
       // Gate block is controlled by the Gen2 Logic block
@@ -163,7 +163,7 @@ namespace gr {
 
             if(n_samples > n_samples_T1 && signal_state == POS_EDGE && num_pulses > NUM_PULSES_COMMAND)
             {
-              d_logger->info( "READER COMMAND DETECTED");
+              //d_logger->info( "READER COMMAND DETECTED");
 
               reader_state->gate_status = GATE_OPEN;
 
